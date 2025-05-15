@@ -1,0 +1,11 @@
+name: CI Basico
+on: push
+jobs:
+	simple_job:
+		runs-on: ubuntu-latest
+		steps:
+			- name: Checkout code
+				uses: actions/checkout@v4
+
+			- name: Run a simple code
+				run: echo 'Hola! Desde mi primer workflow en Github Actions!'
