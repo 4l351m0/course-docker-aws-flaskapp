@@ -1,13 +1,26 @@
-name: CI Basico
-
-on: push
+name: CI Docker Build
+on:
+ push:
+  branches:
+   - main
 
 jobs:
- simple_job:
+ build_docker_image:
   runs-on: ubuntu-latest
 
   steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    - name: Run a simple command
-      run: echo "¡Hola desde mi primer workflow de GitHub Actions!"
+   - name: Checkout code
+     uses: actions/checkout@v4
+
+   - name: Setup Docker Buildx
+	  uses: docker/setup-builx-action@v3
+
+   - name: Build Docker Image
+	  uses: docker/build-push-action@v5
+	  with:
+      context: .
+      push: false
+      tags: mi-app-flask:latest
+
+
+	
