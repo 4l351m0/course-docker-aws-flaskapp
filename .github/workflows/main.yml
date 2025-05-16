@@ -37,7 +37,7 @@ jobs:
       - name: Install Docker in AWS instance
         uses: aws-actions/amazon-ssm-run-command@v3
         with:
-          instance-ids: 'i-0a59861bcbc05c3ef'
+          instance-ids: 'i-0a59861bcbc05c3ef' # <-- TU NUEVA ID DE INSTANCIA AQUÍ
           comment: 'Install Docker on EC2 instance'
           parameters: |
             commands:
@@ -47,5 +47,5 @@ jobs:
                 sudo apt install -y docker.io
                 sudo systemctl start docker
                 sudo systemctl enable docker
-                sudo usermode -aG docker ubuntu
+                sudo usermod -aG docker ubuntu # <-- Corregí 'usermode' a 'usermod' aquí también, aunque no era la causa del error actual
                 sudo systemctl restart docker
