@@ -1,4 +1,4 @@
-name: CI Docker Build and Deploy (CLI SSM FINAL - Minusc. Separada)
+name: CI Docker Build and Deploy (CLI SSM FINAL - Estrategia Output)
 
 on:
   push:
@@ -35,14 +35,21 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-2
+          
+      - name: Get Lowercase Docker Hub Username
+        id: get_lower_username
+        run: |
+          # Obtiene el nombre de usuario del secreto y lo convierte a minúsculas
+          LOWER_USERNAME=$(echo "${{ secrets.DOCKERHUB_USERNAME }}" | tr '[:upper:]' '[:lower:]')
+          # Guarda el resultado como una salida del paso
+          echo "::set-output name=lower_username::$LOWER_USERNAME"
 
       - name: Inject SSH Key & Create Script via SSM CLI
         run: |
-          # Asegúrate de que la instancia EC2 esté en ejecución para que SSM funcione.
           aws ssm send-command \
             --instance-ids '["i-0bc4ea18eca61778df"]' \
             --document-name "AWS-RunShellScript" \
-            --comment "Inject SSH key and create script (Lowercase Username Separated)" \
+            --comment "Inject SSH key and create script (Using Lowercase Output)" \
             --parameters commands='[
               "cd /home/ubuntu/ || exit 1",
               "mkdir -p .ssh",
@@ -51,12 +58,8 @@ jobs:
               "chmod 600 .ssh/authorized_keys",
               "chown -R ubuntu:ubuntu /home/ubuntu/.ssh",
               
-              # *** NUEVA ESTRATEGIA PARA MINÚSCULAS ***
-              # Obtener el nombre de usuario en minúsculas en una variable de shell de SSM
-              "DOCKERHUB_USERNAME_LOWER=$(echo ${{ secrets.DOCKERHUB_USERNAME }} | tr '[:upper:]' '[:lower:]')",
-              
-              # Escribir el script usando la variable con el nombre en minúsculas
-              "echo $'\''#!/bin/bash\n\nCONTAINER_NAME=\"my-flask-app-container\"\nIMAGE_NAME=\"'$DOCKERHUB_USERNAME_LOWER'\/mi-app-flask:latest\"\n\necho \"Deteniendo y eliminando contenedor existente (\\$CONTAINER_NAME)...\"\ndocker stop \\$CONTAINER_NAME > /dev/null 2>&1 || true\ndocker rm \\$CONTAINER_NAME > /dev/null 2>&1 || true\necho \"Contenedor existente detenido/eliminado.\"\n\necho \"Jalando la última imagen de Docker Hub (\\$IMAGE_NAME)...\"\ndocker pull \\$IMAGE_NAME\necho \"Imagen jalada.\"\n\necho \"Ejecutando nuevo contenedor (\\$CONTAINER_NAME)...\"\ndocker run -d --name \\$CONTAINER_NAME -p 80:5000 \\$IMAGE_NAME\necho \"Nuevo contenedor en ejecución.\"\n\necho \"Despliegue completado.\"\n'\'' > deploy.sh",
+              # Usamos la salida del paso anterior (nombre de usuario en minúsculas)
+              "echo $'\''#!/bin/bash\n\nCONTAINER_NAME=\"my-flask-app-container\"\nIMAGE_NAME=\"${{ steps.get_lower_username.outputs.lower_username }}\/mi-app-flask:latest\"\n\necho \"Deteniendo y eliminando contenedor existente (\\$CONTAINER_NAME)...\"\ndocker stop \\$CONTAINER_NAME > /dev/null 2>&1 || true\ndocker rm \\$CONTAINER_NAME > /dev/null 2>&1 || true\necho \"Contenedor existente detenido/eliminado.\"\n\necho \"Jalando la última imagen de Docker Hub (\\$IMAGE_NAME)...\"\ndocker pull \\$IMAGE_NAME\necho \"Imagen jalada.\"\n\necho \"Ejecutando nuevo contenedor (\\$CONTAINER_NAME)...\"\ndocker run -d --name \\$CONTAINER_NAME -p 80:5000 \\$IMAGE_NAME\necho \"Nuevo contenedor en ejecución.\"\n\necho \"Despliegue completado.\"\n'\'' > deploy.sh",
               
               "chmod +x deploy.sh"
             ]' \
