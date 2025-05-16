@@ -45,27 +45,27 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }} # Secreto del Access Key ID de AWS
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }} # Secreto del Secret Access Key de AWS
-          aws-region: ¡REEMPLAZA con tu región AWS (ej. us-east-2)! # <-- ¡REEMPLAZA!
+          aws-region: us-east-2! # <-- ¡REEMPLAZA! (Ej. us-east-2, sa-east-1)
 
       # Paso 6: Inyectar la clave pública SSH usando SSM
       # Esto ayuda a arreglar el error "Permission denied (publickey)"
       - name: Inject SSH Public Key via SSM
-        uses: aws-actions/amazon-ssm-run-command@v2 # Acción oficial de AWS para SSM Run Command
+        uses: aws-actions/amazon-ssm-run-command@v3 # <-- CAMBIADO A v3
         with:
-          # Puedes omitir el ID o generarlo si necesitas rastrearlo
-          command-id: ''
-          # Reemplaza con la ID de tu instancia EC2 (empieza con i-)
-          instance-ids: 'i-0bc4ea18eca6178df'
+          # La ID de tu instancia EC2 (empieza con i-)
+          instance-ids: 'i-0bc4ea18eca6178df' # <-- ¡VERIFICA QUE ESTA ES LA ID CORRECTA DE TU INSTANCIA! (ELIMINA EL TEXTO DEL PLACEHOLDER)
           comment: 'Inyectar clave publica SSH'
           parameters: |
             commands:
               - | # Bloque de comandos para ejecutar en la instancia
                 # Crear el directorio .ssh si no existe y establecer permisos correctos
-                mkdir -p /home/ubuntu/.ssh # Asegúrate de que el usuario sea 'ubuntu' para AMI Ubuntu
+                # Asegúrate de que 'ubuntu' es el usuario correcto para tu AMI
+                mkdir -p /home/ubuntu/.ssh
                 chmod 700 /home/ubuntu/.ssh
 
                 # Añadir la clave pública al archivo authorized_keys
-                echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDLNjxN28wkZDatC3NcwAUwjamliofKjPhOM7avseF+Azrh1wow5MGMncM5vZejlLgPcuXjQef9TERVqBxE5SmFnw3rAQuAVNZERnAdBLXcenROeFCssSDULgHSNxKcqvvqYpxcXcEOAjqIKAk9XjqrAvuJyHLt9QuKmNq/sH4G4yVNGYSTFfH7g2o6or2DWT7U9HpYwMJ0TrzBMISakRIsDWE1fibOI9rYn35EeVxTUGvINldubyGDMxOeNwutEHhcITi1l+NtCmYRUgyHwKiu2gstC+200jNJdi2Bfk6PfnDjL4l8QTZKMvD0tY0fc1C6V/ZmTgGPHTFpAfhzzFQR" >> /home/ubuntu/.ssh/authorized_keys
+                # ¡REEMPLAZA COMPLETAMENTE el texto entre comillas con LA SALIDA EXACTA de ssh-keygen -y -f "tu-archivo.pem"!
+                echo "¡REEMPLAZA COMPLETAMENTE con la SALIDA EXACTA de ssh-keygen -y -f \"tu-archivo.pem\"!" >> /home/ubuntu/.ssh/authorized_keys # <-- ¡REEMPLAZA!
 
                 # Establecer permisos correctos para el archivo authorized_keys
                 chmod 600 /home/ubuntu/.ssh/authorized_keys
@@ -78,10 +78,10 @@ jobs:
       # Paso 7: Crear el script de despliegue en la instancia EC2 usando SSM
       # Esto crea el script deploy.sh remotamente en la instancia
       - name: Create deploy script on EC2 via SSM
-        uses: aws-actions/amazon-ssm-run-command@v2
+        uses: aws-actions/amazon-ssm-run-command@v3 # <-- CAMBIADO A v3
         with:
-          # Reemplaza con la ID de tu instancia EC2 (la misma que antes)
-          instance-ids: 'i-0bc4ea18eca6178df' # <-- ¡REEMPLAZA!
+          # La ID de tu instancia EC2 (la misma que antes)
+          instance-ids: 'i-0bc4ea18eca6178df' # <-- ¡VERIFICA QUE ESTA ES LA ID CORRECTA DE TU INSTANCIA! (ELIMINA EL TEXTO DEL PLACEHOLDER)
           comment: 'Crear script deploy.sh'
           parameters: |
             commands:
@@ -100,7 +100,7 @@ jobs:
                 echo 'docker pull $IMAGE_NAME' >> deploy.sh
                 echo 'echo "Imagen jalada."' >> deploy.sh
                 echo '' >> deploy.sh
-                echo 'echo "Ejecutando nuevo contenedor ($CONTAINER_NAME)..."' >> deploy.sh
+                echo 'echo "Ejecutando nuevo contenedor ($CONTAINER_NAME)..."' >> readme.md
                 echo 'docker run -d --name $CONTAINER_NAME -p 80:5000 $IMAGE_NAME' >> deploy.sh
                 echo 'echo "Nuevo contenedor en ejecución."' >> deploy.sh
                 echo '' >> deploy.sh
@@ -113,10 +113,10 @@ jobs:
       # Paso 8: Ejecutar el script de despliegue en la instancia EC2 usando SSM
       # Este paso ejecuta el script deploy.sh en la instancia
       - name: Run deploy script on EC2 via SSM
-        uses: aws-actions/amazon-ssm-run-command@v2
+        uses: aws-actions/amazon-ssm-run-command@v3 # <-- CAMBIADO A v3
         with:
-          # Reemplaza con la ID de tu instancia EC2 (la misma que antes)
-          instance-ids: 'i-0bc4ea18eca6178df' # <-- ¡REEMPLAZA!
+          # La ID de tu instancia EC2 (la misma que antes)
+          instance-ids: 'i-0bc4ea18eca6178df' # <-- ¡VERIFICA QUE ESTA ES LA ID CORRECTA DE TU INSTANCIA! (ELIMINA EL TEXTO DEL PLACEHOLDER)
           comment: 'Ejecutar script deploy.sh'
           parameters: |
             commands:
