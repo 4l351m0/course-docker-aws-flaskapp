@@ -50,10 +50,10 @@ jobs:
             --comment "Deploy Docker App to EC2 instance"\
             --document-name "AWS-RunShellScript"\
             --parameters 'commands=[
-              "CONTAINER_NAME=\\\"my-flask-app-container"",
-              "docker stop \\\"my-flask-app-container\\\" > /dev/null 2>&1 || true",
-              "docker rm "\\\my-flask-app-container\\\" > /dev/null 2>&1 || true",
+              "CONTAINER_NAME=\\\'my-flask-app-container'",
+              "docker stop \\\'my-flask-app-container\\\' > /dev/null 2>&1 || true",
+              "docker rm '\\\my-flask-app-container\\\' > /dev/null 2>&1 || true",
               "docker pull $(echo ${{ secrets.DOCKERHUB_USERNAME }} | tr \\'[:upper:]\\' \\'[:lower:]\\')/mi-app-flask:latest",
-              "docker run -d --name \\\"my-flask-app-container\\\" -p 80:5000 $(echo ${{ secrets.DOCKERHUB_USERNAME }} | tr \\'[:upper:]\\' \\'[:lower:]\\')/mi-app-flask:latest",
+              "docker run -d --name \\\'my-flask-app-container\\\' -p 80:5000 $(echo ${{ secrets.DOCKERHUB_USERNAME }} | tr \\'[:upper:]\\' \\'[:lower:]\\')/mi-app-flask:latest",
             ]'\
             --region "us-east-2"
