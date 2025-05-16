@@ -35,17 +35,10 @@ jobs:
           aws-region: us-east-2
 
       - name: Install Docker in AWS instance
-        uses: aws-actions/amazon-ssm-run-command@v3
-        with:
-          instance-ids: 'i-0a59861bcbc05c3ef'
-          comment: 'Install Docker on EC2 instance'
-          parameters: |
-            commands:
-              - |
-                sudo apt update -y
-                sudo apt upgrade -y
-                sudo apt install -y docker.io
-                sudo systemctl start docker
-                sudo systemctl enable docker
-                sudo usermod -aG docker ubuntu
-                sudo systemctl restart docker
+        run: |
+          aws ssm send-command \
+            --instance-ids "i-0a59861bcbc05c3ef" \
+            --comment "Install Docker on EC2 instance" \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=["sudo apt update -y", "sudo apt upgrade -y", "sudo apt install -y docker.io", "sudo systemctl start docker", "sudo systemctl enable docker", "sudo usermod -aG docker ubuntu", "sudo systemctl restart docker"]' \
+            --region "us-east-2"
