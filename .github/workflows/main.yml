@@ -28,3 +28,60 @@ jobs:
           context: .
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/mi-app-flask:latest
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+        
+      - name: Inject SSH Public Key via SSM
+        uses: aws-actions/amazon-ssm-run-command@v2
+        with:
+          instance-ids: 'i-0bc4ea18eca6178df'
+          comment: 'Inyectar clave publica SSH'
+          parameters: |
+            commands:
+              - | # Bloque de comandos para ejecutar en la instancia
+                # Crear el directorio .ssh si no existe y establecer permisos correctos
+                mkdir -p /home/ubuntu/.ssh # Asegúrate de que el usuario sea 'ubuntu' para AMI Ubuntu
+                chmod 700 /home/ubuntu/.ssh
+      
+                # Añadir la clave pública al archivo authorized_keys
+                # ¡REEMPLAZA <TU_CLAVE_PUBLICA> con la salida exacta de ssh-keygen -y -f!
+                echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDLNjxN28wkZDatC3NcwAUwjamliofKjPhOM7avseF+Azrh1wow5MGMncM5vZejlLgPcuXjQef9TERVqBxE5SmFnw3rAQuAVNZERnAdBLXcenROeFCssSDULgHSNxKcqvvqYpxcXcEOAjqIKAk9XjqrAvuJyHLt9QuKmNq/sH4G4yVNGYSTFfH7g2o6or2DWT7U9HpYwMJ0TrzBMISakRIsDWE1fibOI9rYn35EeVxTUGvINldubyGDMxOeNwutEHhcITi1l+NtCmYRUgyHwKiu2gstC+200jNJdi2Bfk6PfnDjL4l8QTZKMvD0tY0fc1C6V/ZmTgGPHTFpAfhzzFQR" >> /home/ubuntu/.ssh/authorized_keys
+      
+                # Establecer permisos correctos para el archivo authorized_keys
+                chmod 600 /home/ubuntu/.ssh/authorized_keys
+      
+                # Asegurar que el usuario ubuntu sea el propietario del directorio y archivos
+                chown -R ubuntu:ubuntu /home/ubuntu/.ssh
+      
+      
+      # Paso 7: Crear el script de despliegue en la instancia EC2 usando SSM (Si no lo hiciste antes)
+      # Si ya hiciste el push del workflow que creaba este script, puedes omitir este paso aquí
+      # Pero si no, inclúyelo para asegurar que el script exista
+      - name: Create deploy script on EC2 via SSM # Este paso crea el script si no existe
+        uses: aws-actions/amazon-ssm-run-command@v2
+        with:
+          instance-ids: 'i-0bc4ea18eca6178df' # ¡REEMPLAZA!
+          comment: 'Crear script deploy.sh'
+          parameters: |
+            commands:
+              - | # Bloque para crear el script... (EL MISMO QUE ANTES)
+                echo '#!/bin/bash' > deploy.sh
+                # ... (el resto del contenido del script) ...
+                chmod +x deploy.sh
+                # ¡REEMPLAZA TU_USUARIO_DOCKERHUB dentro del script si lo incluyes aquí!
+      
+      
+      # Paso 8: Ejecutar el script de despliegue en la instancia EC2 usando SSM
+      - name: Run deploy script on EC2 via SSM # Este paso ejecuta el script
+        uses: aws-actions/amazon-ssm-run-command@v2
+        with:
+          instance-ids: 'i-0bc4ea18eca6178df' # ¡REEMPLAZA!
+          comment: 'Ejecutar script deploy.sh'
+          parameters: |
+            commands:
+              - './deploy.sh'
