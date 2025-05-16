@@ -70,3 +70,4 @@ jobs:
             --comment "Run deploy script" \
             --parameters commands='["./deploy.sh"]' \
             --region us-east-2 # <-- Región insertada
+            
