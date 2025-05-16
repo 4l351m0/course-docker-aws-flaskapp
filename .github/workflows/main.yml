@@ -1,5 +1,5 @@
 # Nombre de tu workflow
-name: CI Docker Build and Deploy (CLI SSM Final)
+name: CI Docker Build and Deploy (Automatizado Final)
 
 # Se dispara en cada push a la rama main
 on:
@@ -45,54 +45,19 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }} # Secreto del Access Key ID de AWS
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }} # Secreto del Secret Access Key de AWS
-          aws-region: us-east-2 # <-- Región confirmada
+          aws-region: us-east-2 # <-- Región insertada
 
       # Paso 6: Inyectar la clave pública SSH y crear script via SSM CLI
       # Ejecuta múltiples comandos en la instancia EC2 para configurar SSH y crear el script deploy.sh
       - name: Inject SSH Key & Create Script via SSM CLI
         run: |
           # Asegúrate de que la instancia EC2 esté en ejecución para que SSM funcione.
-
-          # Comando AWS CLI para enviar comandos a la instancia via SSM
-          # --instance-ids: La ID de tu instancia EC2
-          # --document-name: Usamos AWS-RunShellScript para ejecutar comandos de shell
-          # --parameters commands='[...]': La lista de comandos de shell a ejecutar en la instancia
-          # --region: Tu región AWS
           aws ssm send-command \
             --instance-ids "i-0bc4ea18eca6178df" \
             --document-name "AWS-RunShellScript" \
             --comment "Inject SSH key and create deploy script" \
-            --parameters commands='
-              [
-                "mkdir -p /home/ubuntu/.ssh",
-                "chmod 700 /home/ubuntu/.ssh",
-                "echo \"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDLNjxN28wkZDatC3NcwAUwjamliofKjPhOM7avseF+Azrh1wow5MGMncM5vZejlLgPcuXjQef9TERVqBxE5SmFnw3rAQuAVNZERnAdBLXcenROeFCssSDULgHSNxKcqvvqYpxcXcEOAjqIKAk9XjqrAvuJyHLt9QuKmNq/sH4G4yVNGYSTFfH7g2o6or2DWT7U9HpYwMJ0TrzBMISakRIsDWE1fibOI9rYn35EeVxTUGvINldubyGDMxOeNwutEHhcITi1l+NtCmYRUgyHwKiu2gstC+200jNJdi2Bfk6PfnDjL4l8QTZKMvD0tY0fc1C6V/ZmTgGPHTFpAfhzzFQR" >> /home/ubuntu/.ssh/authorized_keys", # <-- ¡REEMPLAZA SOLO ESTO!
-
-                "chmod 600 /home/ubuntu/.ssh/authorized_keys",
-                "chown -R ubuntu:ubuntu /home/ubuntu/.ssh",
-
-                "echo \"#!/bin/bash\" > deploy.sh",
-                "echo \"\" >> deploy.sh",
-                "echo \"CONTAINER_NAME=\\\"my-flask-app-container\\\"\" >> deploy.sh",
-                "echo \"IMAGE_NAME=\\\"${{ secrets.DOCKERHUB_USERNAME }}/mi-app-flask:latest\\\"\" >> deploy.sh",
-                "echo \"\" >> deploy.sh",
-                "echo \"echo \\\"Deteniendo y eliminando contenedor existente (\\\$CONTAINER_NAME)...\\\"\" >> deploy.sh",
-                "docker stop \\\$CONTAINER_NAME > /dev/null 2>&1 || true", # Comando directo
-                "docker rm \\\$CONTAINER_NAME > /dev/null 2>&1 || true",   # Comando directo
-                "echo \"Contenedor existente detenido/eliminado.\\\"\" >> deploy.sh",
-                "echo \"\" >> deploy.sh",
-                "echo \"echo \\\"Jalando la última imagen de Docker Hub (\\\$IMAGE_NAME)...\\\"\" >> deploy.sh",
-                "docker pull \\\$IMAGE_NAME", # Comando directo
-                "echo \"Imagen jalada.\\\"\" >> deploy.sh",
-                "echo \"\" >> deploy.sh",
-                "echo \"echo \\\"Ejecutando nuevo contenedor (\\\$CONTAINER_NAME)...\\\"\" >> deploy.sh",
-                "docker run -d --name \\\$CONTAINER_NAME -p 80:5000 \\\$IMAGE_NAME", # Comando directo
-                "echo \"Nuevo contenedor en ejecución.\\\"\" >> deploy.sh",
-                "echo \"\" >> deploy.sh",
-                "echo \"echo \\\"Despliegue completado.\\\"\" >> deploy.sh",
-                "chmod +x deploy.sh"
-              ]' \
-            --region us-east-2 # <-- Región confirmada
+            --parameters commands='["mkdir -p /home/ubuntu/.ssh","chmod 700 /home/ubuntu/.ssh","echo \"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDLNjxN28wkZDatC3NcwAUwjamliofKjPhOM7avseF+Azrh1wow5MGMncM5vZejlLgPcuXjQef9TERVqBxE5SmFnw3rAQuAVNZERnAdBLXcenROeFCssSDULgHSNxKcqvvqYpxcXcEOAjqIKAk9XjqrAvuJyHLt9QuKmNq/sH4G4yVNGYSTFfH7g2o6or2DWT7U9HpYwMJ0TrzBMISakRIsDWE1fibOI9rYn35EeVxTUGvINldubyGDMxOeNwutEHhcITi1l+NtCmYRUgyHwKiu2gstC+200jNJdi2Bfk6PfnDjL4l8QTZKMvD0tY0fc1C6V/ZmTgGPHTFpAfhzzFQR\" >> /home/ubuntu/.ssh/authorized_keys","chmod 600 /home/ubuntu/.ssh/authorized_keys","chown -R ubuntu:ubuntu /home/ubuntu/.ssh","echo \"#!/bin/bash\" > deploy.sh","echo \"\" >> deploy.sh","echo \"CONTAINER_NAME=\\\"my-flask-app-container\\\"\" >> deploy.sh","echo \"IMAGE_NAME=\\\"${{ secrets.DOCKERHUB_USERNAME }}/mi-app-flask:latest\\\"\" >> deploy.sh","echo \"\" >> deploy.sh","echo \"echo \\\"Deteniendo y eliminando contenedor existente (\\\$CONTAINER_NAME)...\\\"\" >> deploy.sh","docker stop \\\$CONTAINER_NAME > /dev/null 2>&1 || true","docker rm \\\$CONTAINER_NAME > /dev/null 2>&1 || true","echo \"Contenedor existente detenido/eliminado.\\\"\" >> deploy.sh","echo \"\" >> deploy.sh","echo \"echo \\\"Jalando la última imagen de Docker Hub (\\\$IMAGE_NAME)...\\\"\" >> deploy.sh","docker pull \\\$IMAGE_NAME","echo \"Imagen jalada.\\\"\" >> deploy.sh","echo \"\" >> deploy.sh","echo \"echo \\\"Ejecutando nuevo contenedor (\\\$CONTAINER_NAME)...\\\"\" >> deploy.sh","docker run -d --name \\\$CONTAINER_NAME -p 80:5000 \\\$IMAGE_NAME","echo \"Nuevo contenedor en ejecución.\\\"\" >> deploy.sh","echo \"\" >> deploy.sh","echo \"echo \\\"Despliegue completado.\\\"\" >> deploy.sh","chmod +x deploy.sh"]' \
+            --region us-east-2 # <-- Región insertada
 
 
       # Paso 7: Ejecutar el script de despliegue via SSM CLI
@@ -104,4 +69,4 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --comment "Run deploy script" \
             --parameters commands='["./deploy.sh"]' \
-            --region us-east-2 # <-- Región confirmada
+            --region us-east-2 # <-- Región insertada
