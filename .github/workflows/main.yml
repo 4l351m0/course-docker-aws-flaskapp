@@ -1,4 +1,4 @@
-name: CI Docker Build and Deploy (CLI SSM FINAL - Ajuste InstanceId)
+name: CI Docker Build and Deploy (CLI SSM FINAL - Intento Final)
 
 on:
   push:
@@ -38,13 +38,13 @@ jobs:
 
       - name: Inject SSH Key & Create Script via SSM CLI
         run: |
-          # Asegúrate de que la instancia EC2 esté en ejecución para que SSM funcione.
           aws ssm send-command \
-            --instance-ids '["i-0bc4ea18eca61778df"]' \ # <-- AJUSTADO: Formato JSON array string
+            --instance-ids '["i-0bc4ea18eca61778df"]' \ # <-- Ajustado a formato JSON array string
             --document-name "AWS-RunShellScript" \
             --comment "Inject SSH key and create script (Simplified Write)" \
             --parameters commands='["cd /home/ubuntu/ || exit 1","mkdir -p .ssh","chmod 700 .ssh","echo \"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDLNjxN28wkZDatC3NcwAUwjamliofKjPhOM7avseF+Azrh1wow5MGMncM5vZejlLgPcuXjQef9TERVqBxE5SmFnw3rAQuAVNZERnAdBLXcenROeFCssSDULgHSNxKcqvvqYpxcXcEOAjqIKAk9XjqrAvuJyHLt9QuKmNq/sH4G4yVNGYSTFfH7g2o6or2DWT7U9HpYwMJ0TrzBMISakRIsDWE1fibOI9rYn35EeVxTUGvINldubyGDMxOeNwutEHhcITi1l+NtCmYRUgyHwKiu2gstC+200jNJdi2Bfk6PfnDjL4l8QTZKMvD0tY0fc1C6V/ZmTgGPHTFpAfhzzFQR\" >> .ssh/authorized_keys","chmod 600 .ssh/authorized_keys","chown -R ubuntu:ubuntu /home/ubuntu/.ssh","echo $'\''#!/bin/bash\n\nCONTAINER_NAME=\"my-flask-app-container\"\nIMAGE_NAME=\"${{ secrets.DOCKERHUB_USERNAME }}/mi-app-flask:latest\"\n\necho \"Deteniendo y eliminando contenedor existente (\\$CONTAINER_NAME)...\"\ndocker stop \\$CONTAINER_NAME > /dev/null 2>&1 || true\ndocker rm \\$CONTAINER_NAME > /dev/null 2>&1 || true\necho \"Contenedor existente detenido/eliminado.\"\n\necho \"Jalando la última imagen de Docker Hub (\\$IMAGE_NAME)...\"\ndocker pull \\$IMAGE_NAME\necho \"Imagen jalada.\"\n\necho \"Ejecutando nuevo contenedor (\\$CONTAINER_NAME)...\"\ndocker run -d --name \\$CONTAINER_NAME -p 80:5000 \\$IMAGE_NAME\necho \"Nuevo contenedor en ejecución.\"\n\necho \"Despliegue completado.\"\n'\'' > deploy.sh","chmod +x deploy.sh"]' \
             --region us-east-2
+        shell: bash
 
       - name: Run Deploy Script via SSM CLI
         run: |
@@ -54,3 +54,4 @@ jobs:
             --comment "Run deploy script" \
             --parameters commands='["./deploy.sh"]' \
             --region us-east-2
+        shell: bash
