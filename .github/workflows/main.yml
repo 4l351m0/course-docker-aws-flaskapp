@@ -1,4 +1,4 @@
-name: CI Docker Build and Deploy (CLI SSM FINAL - Estrategia Output)
+name: CI Docker Build and Deploy (CLI SSM FINAL - Base64 Script)
 
 on:
   push:
@@ -35,41 +35,63 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-2
-          
+
       - name: Get Lowercase Docker Hub Username
         id: get_lower_username
         run: |
-          # Obtiene el nombre de usuario del secreto y lo convierte a minúsculas
           LOWER_USERNAME=$(echo "${{ secrets.DOCKERHUB_USERNAME }}" | tr '[:upper:]' '[:lower:]')
-          # Guarda el resultado como una salida del paso
           echo "::set-output name=lower_username::$LOWER_USERNAME"
-
-      - name: Inject SSH Key & Create Script via SSM CLI
+      
+      - name: Create Deploy Script Content (Base64)
+        id: script_content
         run: |
-          aws ssm send-command \
-            --instance-ids '["i-0bc4ea18eca61778df"]' \
-            --document-name "AWS-RunShellScript" \
-            --comment "Inject SSH key and create script (Using Lowercase Output)" \
-            --parameters commands='[
-              "cd /home/ubuntu/ || exit 1",
-              "mkdir -p .ssh",
-              "chmod 700 .ssh",
-              "echo \"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDLNjxN28wkZDatC3NcwAUwjamliofKjPhOM7avseF+Azrh1wow5MGMncM5vZejlLgPcuXjQef9TERVqBxE5SmFnw3rAQuAVNZERnAdBLXcenROeFCssSDULgHSNxKcqvvqYpxcXcEOAjqIKAk9XjqrAvuJyHLt9QuKmNq/sH4G4yVNGYSTFfH7g2o6or2DWT7U9HpYwMJ0TrzBMISakRIsDWE1fibOI9rYn35EeVxTUGvINldubyGDMxOeNwutEHhcITi1l+NtCmYRUgyHwKiu2gstC+200jNJdi2Bfk6PfnDjL4l8QTZKMvD0tY0fc1C6V/ZmTgGPHTFpAfhzzFQR\" >> .ssh/authorized_keys",
-              "chmod 600 .ssh/authorized_keys",
-              "chown -R ubuntu:ubuntu /home/ubuntu/.ssh",
-              
-              # Usamos la salida del paso anterior (nombre de usuario en minúsculas)
-              "echo $'\''#!/bin/bash\n\nCONTAINER_NAME=\"my-flask-app-container\"\nIMAGE_NAME=\"${{ steps.get_lower_username.outputs.lower_username }}\/mi-app-flask:latest\"\n\necho \"Deteniendo y eliminando contenedor existente (\\$CONTAINER_NAME)...\"\ndocker stop \\$CONTAINER_NAME > /dev/null 2>&1 || true\ndocker rm \\$CONTAINER_NAME > /dev/null 2>&1 || true\necho \"Contenedor existente detenido/eliminado.\"\n\necho \"Jalando la última imagen de Docker Hub (\\$IMAGE_NAME)...\"\ndocker pull \\$IMAGE_NAME\necho \"Imagen jalada.\"\n\necho \"Ejecutando nuevo contenedor (\\$CONTAINER_NAME)...\"\ndocker run -d --name \\$CONTAINER_NAME -p 80:5000 \\$IMAGE_NAME\necho \"Nuevo contenedor en ejecución.\"\n\necho \"Despliegue completado.\"\n'\'' > deploy.sh",
-              
-              "chmod +x deploy.sh"
-            ]' \
-            --region us-east-2
+          # Obtener el nombre de usuario en minúsculas de la salida del paso anterior
+          LOWER_USERNAME="${{ steps.get_lower_username.outputs.lower_username }}"
 
-      - name: Run Deploy Script via SSM CLI
+          # Definir el contenido completo del script deploy.sh como un string multilinea
+          # Usamos read -r -d '' <<EOF para leer el contenido hasta EOF
+          # Las variables de shell ($CONTAINER_NAME, $IMAGE_NAME) se dejan tal cual las queremos en el script final
+          # Las comillas y backslashes dentro del script final se dejan tal cual las queremos
+          read -r -d '' SCRIPT_CONTENT <<'EOF_SCRIPT' || true
+          #!/bin/bash
+
+          CONTAINER_NAME="my-flask-app-container"
+          IMAGE_NAME="$LOWER_USERNAME/mi-app-flask:latest" # Usamos la variable con el nombre en minúsculas
+
+          echo "Deteniendo y eliminando contenedor existente (\$CONTAINER_NAME)..."
+          docker stop \$CONTAINER_NAME > /dev/null 2>&1 || true
+          docker rm \$CONTAINER_NAME > /dev/null 2>&1 || true
+          echo "Contenedor existente detenido/eliminado."
+
+          echo "Jalando la última imagen de Docker Hub (\$IMAGE_NAME)..."
+          docker pull \$IMAGE_NAME
+          echo "Imagen jalada."
+
+          echo "Ejecutando nuevo contenedor (\$CONTAINER_NAME)..."
+          docker run -d --name \$CONTAINER_NAME -p 80:5000 \$IMAGE_NAME
+          echo "Nuevo contenedor en ejecución."
+
+          echo "Despliegue completado."
+          EOF_SCRIPT
+          
+          # Codificar el contenido del script a Base64
+          BASE64_SCRIPT=$(echo "$SCRIPT_CONTENT" | base64 -w 0)
+          
+          # Guardar la cadena Base64 como una salida del paso
+          echo "::set-output name=base64_script::$BASE64_SCRIPT"
+
+      - name: Execute Script via SSM (Base64)
         run: |
+          # Obtener la cadena Base64 del contenido del script del paso anterior
+          BASE64_SCRIPT_CONTENT="${{ steps.script_content.outputs.base64_script }}"
+
+          # Enviar el comando via SSM: hacer echo de la cadena Base64, decodificarla y pasarla a bash para ejecución
           aws ssm send-command \
-            --instance-ids '["i-0bc4ea18eca61778df"]' \
+            --instance-ids '["i-0bc4ea18eca61778df"]' \ # Tu ID de instancia
             --document-name "AWS-RunShellScript" \
-            --comment "Run deploy script" \
-            --parameters commands='["./deploy.sh"]' \
-            --region us-east-2
+            --comment "Execute script (Base64 encoded)" \
+            --parameters commands='["echo \"'$BASE64_SCRIPT_CONTENT'\" | base64 -d | bash"]' \ # Comando simple: echo base64 | base64 -d | bash
+            --region us-east-2 # Tu región
+
+      - name: Final Verification Step (Optional)
+        run: echo "Script execution command sent via SSM Base64."
