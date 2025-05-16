@@ -1,4 +1,5 @@
-name: CI Docker Build and Deploy (Automatizado Final)
+name: CI Docker Build and Deploy (CLI SSM Final)
+
 on:
   push:
     branches:
@@ -41,8 +42,8 @@ jobs:
             --instance-ids "i-0bc4ea18eca6178df" \
             --document-name "AWS-RunShellScript" \
             --comment "Inject SSH key and create deploy script" \
-            --parameters commands='["mkdir -p /home/ubuntu/.ssh","chmod 700 /home/ubuntu/.ssh","echo \"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDLNjxN28wkZDatC3NcwAUwjamliofKjPhOM7avseF+Azrh1wow5MGMncM5vZejlLgPcuXjQef9TERVqBxE5SmFnw3rAQuAVNZERnAdBLXcenROeFCssSDULgHSNxKcqvvqYpxcXcEOAjqIKAk9XjqrAvuJyHLt9QuKmNq/sH4G4yVNGYSTFfH7g2o6or2DWT7U9HpYwMJ0TrzBMISakRIsDWE1fibOI9rYn35EeVxTUGvINldubyGDMxOeNwutEHhcITi1l+NtCmYRUgyHwKiu2gstC+200jNJdi2Bfk6PfnDjL4l8QTZKMvD0tY0fc1C6V/ZmTgGPHTFpAfhzzFQR\" >> /home/ubuntu/.ssh/authorized_keys","chmod 600 /home/ubuntu/.ssh/authorized_keys","chown -R ubuntu:ubuntu /home/ubuntu/.ssh","echo \"#!/bin/bash\" > deploy.sh","echo \"\" >> deploy.sh","echo \"CONTAINER_NAME=\\\"my-flask-app-container\\\"\" >> deploy.sh","echo \"IMAGE_NAME=\\\"${{ secrets.DOCKERHUB_USERNAME }}/mi-app-flask:latest\\\"\" >> deploy.sh","echo \"\" >> deploy.sh","echo \"echo \\\"Deteniendo y eliminando contenedor existente (\\\$CONTAINER_NAME)...\\\"\" >> deploy.sh","docker stop \\\$CONTAINER_NAME > /dev/null 2>&1 || true","docker rm \\\$CONTAINER_NAME > /dev/null 2>&1 || true","echo \"Contenedor existente detenido/eliminado.\\\"\" >> deploy.sh","echo \"\" >> deploy.sh","echo \"echo \\\"Jalando la última imagen de Docker Hub (\\\$IMAGE_NAME)...\\\"\" >> deploy.sh","docker pull \\\$IMAGE_NAME","echo \"Imagen jalada.\\\"\" >> deploy.sh","echo \"\" >> deploy.sh","echo \"echo \\\"Ejecutando nuevo contenedor (\\\$CONTAINER_NAME)...\\\"\" >> deploy.sh","docker run -d --name \\\$CONTAINER_NAME -p 80:5000 \\\$IMAGE_NAME","echo \"Nuevo contenedor en ejecución.\\\"\" >> deploy.sh","echo \"\" >> deploy.sh","echo \"echo \\\"Despliegue completado.\\\"\" >> deploy.sh","chmod +x deploy.sh"]' \
-            --region us-east-2 # <-- Región insertada
+            --parameters commands='["cd /home/ubuntu/ || exit 1","mkdir -p .ssh","chmod 700 .ssh","echo \"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDLNjxN28wkZDatC3NcwAUwjamliofKjPhOM7avseF+Azrh1wow5MGMncM5vZejlLgPcuXjQef9TERVqBxE5SmFnw3rAQuAVNZERnAdBLXcenROeFCssSDULgHSNxKcqvvqYpxcXcEOAjqIKAk9XjqrAvuJyHLt9QuKmNq/sH4G4yVNGYSTFfH7g2o6or2DWT7U9HpYwMJ0TrzBMISakRIsDWE1fibOI9rYn35EeVxTUGvINldubyGDMxOeNwutEHhcITi1l+NtCmYRUgyHwKiu2gstC+200jNJdi2Bfk6PfnDjL4l8QTZKMvD0tY0fc1C6V/ZmTgGPHTFpAfhzzFQR\" >> .ssh/authorized_keys","chmod 600 .ssh/authorized_keys","chown -R ubuntu:ubuntu /home/ubuntu/.ssh","echo \"#!/bin/bash\" > deploy.sh","echo \"\" >> deploy.sh","echo \"CONTAINER_NAME=\\\"my-flask-app-container\\\"\" >> deploy.sh","echo \"IMAGE_NAME=\\\"${{ secrets.DOCKERHUB_USERNAME }}/mi-app-flask:latest\\\"\" >> deploy.sh","echo \"\" >> deploy.sh","echo \"echo \\\"Deteniendo y eliminando contenedor existente (\\\$CONTAINER_NAME)...\\\"\" >> deploy.sh","docker stop \\\$CONTAINER_NAME > /dev/null 2>&1 || true","docker rm \\\$CONTAINER_NAME > /dev/null 2>&1 || true","echo \"Contenedor existente detenido/eliminado.\\\"\" >> deploy.sh","echo \"\" >> deploy.sh","echo \"echo \\\"Jalando la última imagen de Docker Hub (\\\$IMAGE_NAME)...\\\"\" >> deploy.sh","docker pull \\\$IMAGE_NAME","echo \"Imagen jalada.\\\"\" >> deploy.sh","echo \"\" >> deploy.sh","echo \"echo \\\"Ejecutando nuevo contenedor (\\\$CONTAINER_NAME)...\\\"\" >> deploy.sh","docker run -d --name \\\$CONTAINER_NAME -p 80:5000 \\\$IMAGE_NAME","echo \"Nuevo contenedor en ejecución.\\\"\" >> deploy.sh","echo \"\" >> deploy.sh","echo \"echo \\\"Despliegue completado.\\\"\" >> deploy.sh","chmod +x deploy.sh"]' \
+            --region us-east-2 # <-- Región confirmada
 
       - name: Run Deploy Script via SSM CLI
         run: |
@@ -51,4 +52,4 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --comment "Run deploy script" \
             --parameters commands='["./deploy.sh"]' \
-            --region us-east-2 # <-- Región insertada
+            --region us-east-2 # <-- Región confirmada
