@@ -1,5 +1,5 @@
 # Nombre de tu workflow
-name: CI Docker Build and Deploy (Automatizado)
+name: CI Docker Build and Deploy (CLI SSM Final)
 
 # Se dispara en cada push a la rama main
 on:
@@ -45,7 +45,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }} # Secreto del Access Key ID de AWS
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }} # Secreto del Secret Access Key de AWS
-          aws-region: us-east-2 # <-- Insertado: Región proporcionada
+          aws-region: us-east-2 # <-- Región confirmada
 
       # Paso 6: Inyectar la clave pública SSH y crear script via SSM CLI
       # Ejecuta múltiples comandos en la instancia EC2 para configurar SSH y crear el script deploy.sh
@@ -64,18 +64,19 @@ jobs:
             --comment "Inject SSH key and create deploy script" \
             --parameters commands='
               [
-                "mkdir -p /home/ubuntu/.ssh", # Crear directorio .ssh si no existe
-                "chmod 700 /home/ubuntu/.ssh", # Establecer permisos correctos para .ssh
-                # ¡Clave pública SSH inyectada!
-                "echo \"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDLNjxN28wkZDatC3NcwAUwjamliofKjPhOM7avseF+Azrh1wow5MGMncM5vZejlLgPcuXjQef9TERVqBxE5SmFnw3rAQuAVNZERnAdBLXcenROeFCssSDULgHSNxKcqvvqYpxcXcEOAjqIKAk9XjqrAvuJyHLd9QuKmNq/sH4G4yVNGYSTFfH7g2o6or2DWT7U9HpYwMJ0TrzBMISakRIsDWE1fibOI9rYn35EeVxTUGvINldubyGDMxOeNwutEHhcITi1l+NtCmYRUgyHwKiu2gstC+200jNJdi2Bfk6PfnDjL4l8QTZKMvD0tY0fc1C6V/ZmTgGPHTFpAfhzzFQR\" >> /home/ubuntu/.ssh/authorized_keys", # <-- Insertado: Clave proporcionada
+                "mkdir -p /home/ubuntu/.ssh",
+                "chmod 700 /home/ubuntu/.ssh",
+                # ¡CRÍTICO! Añadir la clave pública al archivo authorized_keys
+                # ¡PEGA AQUÍ LA SALIDA COMPLETA Y EXACTA de tu comando ssh-keygen -y -f "ruta/a/tu/archivo.pem"!
+                "echo \"¡PEGA AQUÍ LA SALIDA COMPLETA Y EXACTA de tu comando ssh-keygen -y -f \\\"ruta/a/tu/archivo.pem\\\"!\" >> /home/ubuntu/.ssh/authorized_keys", # <-- ¡REEMPLAZA SOLO ESTO!
 
-                "chmod 600 /home/ubuntu/.ssh/authorized_keys", # Establecer permisos correctos para authorized_keys
-                "chown -R ubuntu:ubuntu /home/ubuntu/.ssh", # Asegurar que 'ubuntu' sea el propietario (cambia 'ubuntu' si tu AMI usa otro usuario)
+                "chmod 600 /home/ubuntu/.ssh/authorized_keys",
+                "chown -R ubuntu:ubuntu /home/ubuntu/.ssh",
 
-                "echo \"#!/bin/bash\" > deploy.sh", # <-- Crear el script deploy.sh
+                "echo \"#!/bin/bash\" > deploy.sh",
                 "echo \"\" >> deploy.sh",
                 "echo \"CONTAINER_NAME=\\\"my-flask-app-container\\\"\" >> deploy.sh",
-                "echo \"IMAGE_NAME=\\\"${{ secrets.DOCKERHUB_USERNAME }}/mi-app-flask:latest\\\"\" >> deploy.sh", # Usa el secreto de Docker Hub aquí
+                "echo \"IMAGE_NAME=\\\"${{ secrets.DOCKERHUB_USERNAME }}/mi-app-flask:latest\\\"\" >> deploy.sh",
                 "echo \"\" >> deploy.sh",
                 "echo \"echo \\\"Deteniendo y eliminando contenedor existente (\\\$CONTAINER_NAME)...\\\"\" >> deploy.sh",
                 "echo \"docker stop \\\$CONTAINER_NAME > /dev/null 2>&1 || true\" >> deploy.sh",
@@ -89,11 +90,11 @@ jobs:
                 "echo \\\"echo \\\\\\\"Ejecutando nuevo contenedor (\\\\\\\$CONTAINER_NAME)...\\\\\\\"\\\" >> deploy.sh",
                 "echo \"docker run -d --name \\\$CONTAINER_NAME -p 80:5000 \\\$IMAGE_NAME\" >> deploy.sh",
                 "echo \"echo \\\"Nuevo contenedor en ejecución.\\\"\" >> deploy.sh",
-                "echo \\\"\\\" >> deploy.sh", # Corregido un typo de escape en el último mensaje
+                "echo \"\" >> deploy.sh",
                 "echo \"echo \\\"Despliegue completado.\\\"\" >> deploy.sh",
-                "chmod +x deploy.sh" # <-- Hacer el script ejecutable
+                "chmod +x deploy.sh"
               ]' \
-            --region us-east-2 # <-- Insertado: Región proporcionada
+            --region us-east-2 # <-- Región confirmada
 
 
       # Paso 7: Ejecutar el script de despliegue via SSM CLI
@@ -105,4 +106,4 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --comment "Run deploy script" \
             --parameters commands='["./deploy.sh"]' \
-            --region us-east-2 # <-- Insertado: Región proporcionada
+            --region us-east-2 # <-- Región confirmada
