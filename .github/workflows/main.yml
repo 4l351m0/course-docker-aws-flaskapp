@@ -1,4 +1,4 @@
-name: CI Docker Build and Deploy (CLI SSM FINAL - Simplest Run)
+name: Worflow Testing Github Actions
 
 on:
   push:
@@ -6,67 +6,11 @@ on:
       - main
 
 jobs:
-  build_and_deploy:
+  simple_test:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build and Push Docker Image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/mi-app-flask:latest
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-2
-
-      - name: Get Lowercase Docker Hub Username
-        id: get_lower_username
-        run: echo "::set-output name=lower_username::$(echo "${{ secrets.DOCKERHUB_USERNAME }}" | tr '[:upper:]' '[:lower:]')"
-
-      - name: Create Deploy Script Content (Base64)
-        id: script_content
+      - name: Simple echo step
         run: |
-          LOWER_USERNAME="${{ steps.get_lower_username.outputs.lower_username }}"
-          read -r -d '' SCRIPT_CONTENT <<'EOF_SCRIPT' || true
-          #!/bin/bash
-          CONTAINER_NAME="my-flask-app-container"
-          IMAGE_NAME="$LOWER_USERNAME/mi-app-flask:latest"
-          echo "Deteniendo y eliminando contenedor existente (\$CONTAINER_NAME)..."
-          docker stop \$CONTAINER_NAME > /dev/null 2>&1 || true
-          docker rm \$CONTAINER_NAME > /dev/null 2>&1 || true
-          echo "Contenedor existente detenido/eliminado."
-          echo "Jalando la última imagen de Docker Hub (\$IMAGE_NAME)..."
-          docker pull \$IMAGE_NAME
-          echo "Imagen jalada."
-          echo "Ejecutando nuevo contenedor (\$CONTAINER_NAME)..."
-          docker run -d --name \$CONTAINER_NAME -p 80:5000 \$IMAGE_NAME
-          echo "Nuevo contenedor en ejecución."
-          echo "Despliegue completado."
-          EOF_SCRIPT
-          BASE64_SCRIPT=$(echo "$SCRIPT_CONTENT" | base64 -w 0)
-          echo "::set-output name=base64_script::$BASE64_SCRIPT"
-
-      # PASO MODIFICADO: Execute Script via SSM (Base64) - Llamada en una sola línea
-      - name: Execute Script via SSM (Base64)
-        run: aws ssm send-command --document-name "AWS-RunShellScript" --instance-ids i-0bc4ea18eca61778df --parameters commands='["echo \"${{ steps.script_content.outputs.base64_script }}\" | base64 -d | bash"]' --region us-east-2 --comment "Execute script (Base64 encoded)"
-
-      # Paso Final de Verificación (Opcional, ya no ejecuta el script)
-      - name: Final Check (Optional)
-        run: echo "Base64 SSM command sent."
+          echo 'Hello from github actions'
+          echo 'Basic workflow from github actions'
