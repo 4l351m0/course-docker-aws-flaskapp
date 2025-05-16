@@ -66,9 +66,7 @@ jobs:
               [
                 "mkdir -p /home/ubuntu/.ssh",
                 "chmod 700 /home/ubuntu/.ssh",
-                # ¡CRÍTICO! Añadir la clave pública al archivo authorized_keys
-                # ¡PEGA AQUÍ LA SALIDA COMPLETA Y EXACTA de tu comando ssh-keygen -y -f "ruta/a/tu/archivo.pem"!
-                "echo \"¡PEGA AQUÍ LA SALIDA COMPLETA Y EXACTA de tu comando ssh-keygen -y -f \\\"ruta/a/tu/archivo.pem\\\"!\" >> /home/ubuntu/.ssh/authorized_keys", # <-- ¡REEMPLAZA SOLO ESTO!
+                "echo \"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDLNjxN28wkZDatC3NcwAUwjamliofKjPhOM7avseF+Azrh1wow5MGMncM5vZejlLgPcuXjQef9TERVqBxE5SmFnw3rAQuAVNZERnAdBLXcenROeFCssSDULgHSNxKcqvvqYpxcXcEOAjqIKAk9XjqrAvuJyHLt9QuKmNq/sH4G4yVNGYSTFfH7g2o6or2DWT7U9HpYwMJ0TrzBMISakRIsDWE1fibOI9rYn35EeVxTUGvINldubyGDMxOeNwutEHhcITi1l+NtCmYRUgyHwKiu2gstC+200jNJdi2Bfk6PfnDjL4l8QTZKMvD0tY0fc1C6V/ZmTgGPHTFpAfhzzFQR" >> /home/ubuntu/.ssh/authorized_keys", # <-- ¡REEMPLAZA SOLO ESTO!
 
                 "chmod 600 /home/ubuntu/.ssh/authorized_keys",
                 "chown -R ubuntu:ubuntu /home/ubuntu/.ssh",
@@ -79,17 +77,17 @@ jobs:
                 "echo \"IMAGE_NAME=\\\"${{ secrets.DOCKERHUB_USERNAME }}/mi-app-flask:latest\\\"\" >> deploy.sh",
                 "echo \"\" >> deploy.sh",
                 "echo \"echo \\\"Deteniendo y eliminando contenedor existente (\\\$CONTAINER_NAME)...\\\"\" >> deploy.sh",
-                "echo \"docker stop \\\$CONTAINER_NAME > /dev/null 2>&1 || true\" >> deploy.sh",
-                "echo \"docker rm \\\$CONTAINER_NAME > /dev/null 2>&1 || true\" >> deploy.sh",
-                "echo \"echo \\\"Contenedor existente detenido/eliminado.\\\"\" >> deploy.sh",
+                "docker stop \\\$CONTAINER_NAME > /dev/null 2>&1 || true", # Comando directo
+                "docker rm \\\$CONTAINER_NAME > /dev/null 2>&1 || true",   # Comando directo
+                "echo \"Contenedor existente detenido/eliminado.\\\"\" >> deploy.sh",
                 "echo \"\" >> deploy.sh",
-                "echo \\\"echo \\\\\\\"Jalando la última imagen de Docker Hub (\\\\\\\$IMAGE_NAME)...\\\\\\\"\\\" >> deploy.sh",
-                "echo \\\"docker pull \\\\\\\$IMAGE_NAME\\\" >> deploy.sh",
-                "echo \\\"echo \\\\\\\"Imagen jalada.\\\\\\\"\\\" >> deploy.sh",
-                "echo \\\"\\\" >> deploy.sh",
-                "echo \\\"echo \\\\\\\"Ejecutando nuevo contenedor (\\\\\\\$CONTAINER_NAME)...\\\\\\\"\\\" >> deploy.sh",
-                "echo \"docker run -d --name \\\$CONTAINER_NAME -p 80:5000 \\\$IMAGE_NAME\" >> deploy.sh",
-                "echo \"echo \\\"Nuevo contenedor en ejecución.\\\"\" >> deploy.sh",
+                "echo \"echo \\\"Jalando la última imagen de Docker Hub (\\\$IMAGE_NAME)...\\\"\" >> deploy.sh",
+                "docker pull \\\$IMAGE_NAME", # Comando directo
+                "echo \"Imagen jalada.\\\"\" >> deploy.sh",
+                "echo \"\" >> deploy.sh",
+                "echo \"echo \\\"Ejecutando nuevo contenedor (\\\$CONTAINER_NAME)...\\\"\" >> deploy.sh",
+                "docker run -d --name \\\$CONTAINER_NAME -p 80:5000 \\\$IMAGE_NAME", # Comando directo
+                "echo \"Nuevo contenedor en ejecución.\\\"\" >> deploy.sh",
                 "echo \"\" >> deploy.sh",
                 "echo \"echo \\\"Despliegue completado.\\\"\" >> deploy.sh",
                 "chmod +x deploy.sh"
