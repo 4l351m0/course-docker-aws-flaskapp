@@ -1,34 +1,25 @@
-# Nombre de tu workflow
 name: CI Docker Build and Deploy (Automatizado Final)
-
-# Se dispara en cada push a la rama main
 on:
   push:
     branches:
-      - main # O la rama principal que uses (ej. master)
-
-# Define los trabajos
+      - main
 jobs:
-  build_and_deploy: # Nombre del trabajo
-    runs-on: ubuntu-latest # Se ejecuta en un runner de Ubuntu
+  build_and_deploy:
+    runs-on: ubuntu-latest
 
     steps:
-      # Paso 1: Hacer checkout del código
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Paso 2: Configurar Buildx (motor de construcción Docker mejorado)
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Paso 3: Autenticarse en Docker Hub
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Paso 4: Construir y Subir (Push) la imagen Docker
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
         with:
@@ -36,19 +27,13 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/mi-app-flask:latest
 
-      # --- Pasos de Despliegue (CD) usando AWS CLI para SSM ---
-
-      # Paso 5: Configurar credenciales de AWS
-      # Usa los secretos de AWS para autenticarse en la API de AWS
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4 # Usamos una acción oficial de AWS
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }} # Secreto del Access Key ID de AWS
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }} # Secreto del Secret Access Key de AWS
-          aws-region: us-east-2 # <-- Región insertada
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
 
-      # Paso 6: Inyectar la clave pública SSH y crear script via SSM CLI
-      # Ejecuta múltiples comandos en la instancia EC2 para configurar SSH y crear el script deploy.sh
       - name: Inject SSH Key & Create Script via SSM CLI
         run: |
           # Asegúrate de que la instancia EC2 esté en ejecución para que SSM funcione.
@@ -59,9 +44,6 @@ jobs:
             --parameters commands='["mkdir -p /home/ubuntu/.ssh","chmod 700 /home/ubuntu/.ssh","echo \"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDLNjxN28wkZDatC3NcwAUwjamliofKjPhOM7avseF+Azrh1wow5MGMncM5vZejlLgPcuXjQef9TERVqBxE5SmFnw3rAQuAVNZERnAdBLXcenROeFCssSDULgHSNxKcqvvqYpxcXcEOAjqIKAk9XjqrAvuJyHLt9QuKmNq/sH4G4yVNGYSTFfH7g2o6or2DWT7U9HpYwMJ0TrzBMISakRIsDWE1fibOI9rYn35EeVxTUGvINldubyGDMxOeNwutEHhcITi1l+NtCmYRUgyHwKiu2gstC+200jNJdi2Bfk6PfnDjL4l8QTZKMvD0tY0fc1C6V/ZmTgGPHTFpAfhzzFQR\" >> /home/ubuntu/.ssh/authorized_keys","chmod 600 /home/ubuntu/.ssh/authorized_keys","chown -R ubuntu:ubuntu /home/ubuntu/.ssh","echo \"#!/bin/bash\" > deploy.sh","echo \"\" >> deploy.sh","echo \"CONTAINER_NAME=\\\"my-flask-app-container\\\"\" >> deploy.sh","echo \"IMAGE_NAME=\\\"${{ secrets.DOCKERHUB_USERNAME }}/mi-app-flask:latest\\\"\" >> deploy.sh","echo \"\" >> deploy.sh","echo \"echo \\\"Deteniendo y eliminando contenedor existente (\\\$CONTAINER_NAME)...\\\"\" >> deploy.sh","docker stop \\\$CONTAINER_NAME > /dev/null 2>&1 || true","docker rm \\\$CONTAINER_NAME > /dev/null 2>&1 || true","echo \"Contenedor existente detenido/eliminado.\\\"\" >> deploy.sh","echo \"\" >> deploy.sh","echo \"echo \\\"Jalando la última imagen de Docker Hub (\\\$IMAGE_NAME)...\\\"\" >> deploy.sh","docker pull \\\$IMAGE_NAME","echo \"Imagen jalada.\\\"\" >> deploy.sh","echo \"\" >> deploy.sh","echo \"echo \\\"Ejecutando nuevo contenedor (\\\$CONTAINER_NAME)...\\\"\" >> deploy.sh","docker run -d --name \\\$CONTAINER_NAME -p 80:5000 \\\$IMAGE_NAME","echo \"Nuevo contenedor en ejecución.\\\"\" >> deploy.sh","echo \"\" >> deploy.sh","echo \"echo \\\"Despliegue completado.\\\"\" >> deploy.sh","chmod +x deploy.sh"]' \
             --region us-east-2 # <-- Región insertada
 
-
-      # Paso 7: Ejecutar el script de despliegue via SSM CLI
-      # Ejecuta el script deploy.sh en la instancia EC2
       - name: Run Deploy Script via SSM CLI
         run: |
           aws ssm send-command \
@@ -70,4 +52,3 @@ jobs:
             --comment "Run deploy script" \
             --parameters commands='["./deploy.sh"]' \
             --region us-east-2 # <-- Región insertada
-            
