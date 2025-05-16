@@ -1,5 +1,5 @@
 # Nombre de tu workflow
-name: CI Docker Build and Deploy
+name: CI Docker Build and Deploy (Automatizado)
 
 # Se dispara en cada push a la rama main
 on:
@@ -36,7 +36,7 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/mi-app-flask:latest
 
-      # --- Pasos de Despliegue (CD) ---
+      # --- Pasos de Despliegue (CD) usando AWS CLI para SSM ---
 
       # Paso 5: Configurar credenciales de AWS
       # Usa los secretos de AWS para autenticarse en la API de AWS
@@ -45,79 +45,64 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }} # Secreto del Access Key ID de AWS
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }} # Secreto del Secret Access Key de AWS
-          aws-region: us-east-2! # <-- ¡REEMPLAZA! (Ej. us-east-2, sa-east-1)
+          aws-region: us-east-2 # <-- Insertado: Región proporcionada
 
-      # Paso 6: Inyectar la clave pública SSH usando SSM
-      # Esto ayuda a arreglar el error "Permission denied (publickey)"
-      - name: Inject SSH Public Key via SSM
-        uses: aws-actions/amazon-ssm-run-command@v3 # <-- CAMBIADO A v3
-        with:
-          # La ID de tu instancia EC2 (empieza con i-)
-          instance-ids: 'i-0bc4ea18eca6178df' # <-- ¡VERIFICA QUE ESTA ES LA ID CORRECTA DE TU INSTANCIA! (ELIMINA EL TEXTO DEL PLACEHOLDER)
-          comment: 'Inyectar clave publica SSH'
-          parameters: |
-            commands:
-              - | # Bloque de comandos para ejecutar en la instancia
-                # Crear el directorio .ssh si no existe y establecer permisos correctos
-                # Asegúrate de que 'ubuntu' es el usuario correcto para tu AMI
-                mkdir -p /home/ubuntu/.ssh
-                chmod 700 /home/ubuntu/.ssh
+      # Paso 6: Inyectar la clave pública SSH y crear script via SSM CLI
+      # Ejecuta múltiples comandos en la instancia EC2 para configurar SSH y crear el script deploy.sh
+      - name: Inject SSH Key & Create Script via SSM CLI
+        run: |
+          # Asegúrate de que la instancia EC2 esté en ejecución para que SSM funcione.
 
-                # Añadir la clave pública al archivo authorized_keys
-                # ¡REEMPLAZA COMPLETAMENTE el texto entre comillas con LA SALIDA EXACTA de ssh-keygen -y -f "tu-archivo.pem"!
-                echo "¡REEMPLAZA COMPLETAMENTE con la SALIDA EXACTA de ssh-keygen -y -f \"tu-archivo.pem\"!" >> /home/ubuntu/.ssh/authorized_keys # <-- ¡REEMPLAZA!
+          # Comando AWS CLI para enviar comandos a la instancia via SSM
+          # --instance-ids: La ID de tu instancia EC2
+          # --document-name: Usamos AWS-RunShellScript para ejecutar comandos de shell
+          # --parameters commands='[...]': La lista de comandos de shell a ejecutar en la instancia
+          # --region: Tu región AWS
+          aws ssm send-command \
+            --instance-ids "i-0bc4ea18eca6178df" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Inject SSH key and create deploy script" \
+            --parameters commands='
+              [
+                "mkdir -p /home/ubuntu/.ssh", # Crear directorio .ssh si no existe
+                "chmod 700 /home/ubuntu/.ssh", # Establecer permisos correctos para .ssh
+                # ¡Clave pública SSH inyectada!
+                "echo \"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDLNjxN28wkZDatC3NcwAUwjamliofKjPhOM7avseF+Azrh1wow5MGMncM5vZejlLgPcuXjQef9TERVqBxE5SmFnw3rAQuAVNZERnAdBLXcenROeFCssSDULgHSNxKcqvvqYpxcXcEOAjqIKAk9XjqrAvuJyHLd9QuKmNq/sH4G4yVNGYSTFfH7g2o6or2DWT7U9HpYwMJ0TrzBMISakRIsDWE1fibOI9rYn35EeVxTUGvINldubyGDMxOeNwutEHhcITi1l+NtCmYRUgyHwKiu2gstC+200jNJdi2Bfk6PfnDjL4l8QTZKMvD0tY0fc1C6V/ZmTgGPHTFpAfhzzFQR\" >> /home/ubuntu/.ssh/authorized_keys", # <-- Insertado: Clave proporcionada
 
-                # Establecer permisos correctos para el archivo authorized_keys
-                chmod 600 /home/ubuntu/.ssh/authorized_keys
+                "chmod 600 /home/ubuntu/.ssh/authorized_keys", # Establecer permisos correctos para authorized_keys
+                "chown -R ubuntu:ubuntu /home/ubuntu/.ssh", # Asegurar que 'ubuntu' sea el propietario (cambia 'ubuntu' si tu AMI usa otro usuario)
 
-                # Asegurar que el usuario ubuntu sea el propietario del directorio y archivos
-                # Asegúrate de que 'ubuntu' es el usuario correcto para tu AMI
-                chown -R ubuntu:ubuntu /home/ubuntu/.ssh
-
-
-      # Paso 7: Crear el script de despliegue en la instancia EC2 usando SSM
-      # Esto crea el script deploy.sh remotamente en la instancia
-      - name: Create deploy script on EC2 via SSM
-        uses: aws-actions/amazon-ssm-run-command@v3 # <-- CAMBIADO A v3
-        with:
-          # La ID de tu instancia EC2 (la misma que antes)
-          instance-ids: 'i-0bc4ea18eca6178df' # <-- ¡VERIFICA QUE ESTA ES LA ID CORRECTA DE TU INSTANCIA! (ELIMINA EL TEXTO DEL PLACEHOLDER)
-          comment: 'Crear script deploy.sh'
-          parameters: |
-            commands:
-              - | # Esto es un bloque de múltiples líneas
-                echo '#!/bin/bash' > deploy.sh
-                echo '' >> deploy.sh
-                echo 'CONTAINER_NAME="my-flask-app-container"' >> deploy.sh
-                echo 'IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/mi-app-flask:latest"' >> deploy.sh # Usa el secreto de Docker Hub aquí
-                echo '' >> deploy.sh
-                echo 'echo "Deteniendo y eliminando contenedor existente ($CONTAINER_NAME)..."' >> deploy.sh
-                echo 'docker stop $CONTAINER_NAME > /dev/null 2>&1 || true' >> deploy.sh
-                echo 'docker rm $CONTAINER_NAME > /dev/null 2>&1 || true' >> deploy.sh
-                echo 'echo "Contenedor existente detenido/eliminado."' >> deploy.sh
-                echo '' >> deploy.sh
-                echo 'echo "Jalando la última imagen de Docker Hub ($IMAGE_NAME)..."' >> deploy.sh
-                echo 'docker pull $IMAGE_NAME' >> deploy.sh
-                echo 'echo "Imagen jalada."' >> deploy.sh
-                echo '' >> deploy.sh
-                echo 'echo "Ejecutando nuevo contenedor ($CONTAINER_NAME)..."' >> readme.md
-                echo 'docker run -d --name $CONTAINER_NAME -p 80:5000 $IMAGE_NAME' >> deploy.sh
-                echo 'echo "Nuevo contenedor en ejecución."' >> deploy.sh
-                echo '' >> deploy.sh
-                echo 'echo "Despliegue completado."' >> deploy.sh
-
-                # Hacer el script ejecutable
-                chmod +x deploy.sh
+                "echo \"#!/bin/bash\" > deploy.sh", # <-- Crear el script deploy.sh
+                "echo \"\" >> deploy.sh",
+                "echo \"CONTAINER_NAME=\\\"my-flask-app-container\\\"\" >> deploy.sh",
+                "echo \"IMAGE_NAME=\\\"${{ secrets.DOCKERHUB_USERNAME }}/mi-app-flask:latest\\\"\" >> deploy.sh", # Usa el secreto de Docker Hub aquí
+                "echo \"\" >> deploy.sh",
+                "echo \"echo \\\"Deteniendo y eliminando contenedor existente (\\\$CONTAINER_NAME)...\\\"\" >> deploy.sh",
+                "echo \"docker stop \\\$CONTAINER_NAME > /dev/null 2>&1 || true\" >> deploy.sh",
+                "echo \"docker rm \\\$CONTAINER_NAME > /dev/null 2>&1 || true\" >> deploy.sh",
+                "echo \"echo \\\"Contenedor existente detenido/eliminado.\\\"\" >> deploy.sh",
+                "echo \"\" >> deploy.sh",
+                "echo \\\"echo \\\\\\\"Jalando la última imagen de Docker Hub (\\\\\\\$IMAGE_NAME)...\\\\\\\"\\\" >> deploy.sh",
+                "echo \\\"docker pull \\\\\\\$IMAGE_NAME\\\" >> deploy.sh",
+                "echo \\\"echo \\\\\\\"Imagen jalada.\\\\\\\"\\\" >> deploy.sh",
+                "echo \\\"\\\" >> deploy.sh",
+                "echo \\\"echo \\\\\\\"Ejecutando nuevo contenedor (\\\\\\\$CONTAINER_NAME)...\\\\\\\"\\\" >> deploy.sh",
+                "echo \"docker run -d --name \\\$CONTAINER_NAME -p 80:5000 \\\$IMAGE_NAME\" >> deploy.sh",
+                "echo \"echo \\\"Nuevo contenedor en ejecución.\\\"\" >> deploy.sh",
+                "echo \\\"\\\" >> deploy.sh", # Corregido un typo de escape en el último mensaje
+                "echo \"echo \\\"Despliegue completado.\\\"\" >> deploy.sh",
+                "chmod +x deploy.sh" # <-- Hacer el script ejecutable
+              ]' \
+            --region us-east-2 # <-- Insertado: Región proporcionada
 
 
-      # Paso 8: Ejecutar el script de despliegue en la instancia EC2 usando SSM
-      # Este paso ejecuta el script deploy.sh en la instancia
-      - name: Run deploy script on EC2 via SSM
-        uses: aws-actions/amazon-ssm-run-command@v3 # <-- CAMBIADO A v3
-        with:
-          # La ID de tu instancia EC2 (la misma que antes)
-          instance-ids: 'i-0bc4ea18eca6178df' # <-- ¡VERIFICA QUE ESTA ES LA ID CORRECTA DE TU INSTANCIA! (ELIMINA EL TEXTO DEL PLACEHOLDER)
-          comment: 'Ejecutar script deploy.sh'
-          parameters: |
-            commands:
-              - './deploy.sh' # Ejecuta el script que acabamos de crear
+      # Paso 7: Ejecutar el script de despliegue via SSM CLI
+      # Ejecuta el script deploy.sh en la instancia EC2
+      - name: Run Deploy Script via SSM CLI
+        run: |
+          aws ssm send-command \
+            --instance-ids "i-0bc4ea18eca6178df" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Run deploy script" \
+            --parameters commands='["./deploy.sh"]' \
+            --region us-east-2 # <-- Insertado: Región proporcionada
