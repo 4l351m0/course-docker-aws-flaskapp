@@ -35,7 +35,7 @@ jobs:
           aws-region: us-east-2
 
       - name: Install Docker in AWS instance
-        uses: aws-actions/amazon-ssm-run-command@v2
+        uses: aws-actions/amazon-ssm-run-command
         with:
           instance-ids: 'i-0a59861bcbc05c3ef'
           comment: 'Install Docker on EC2 instance'
