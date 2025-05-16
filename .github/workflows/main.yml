@@ -1,4 +1,4 @@
-name: Worflow Testing Github Actions
+name: CI Docker Build
 
 on:
   push:
@@ -6,11 +6,16 @@ on:
       - main
 
 jobs:
-  simple_test:
+  docker_build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Simple echo step
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image
         run: |
-          echo 'Hello from github actions'
-          echo 'Basic workflow from github actions'
+          docker build -t mi-app-flask .
